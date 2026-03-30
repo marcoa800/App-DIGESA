@@ -2,7 +2,7 @@ import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
   UploadCloud, CheckCircle, AlertCircle, BarChart2,
-  Activity, FileText, Settings, Users, ArrowRight
+  Activity, FileText, Settings, Users, ArrowRight, Download
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN Y DICCIONARIOS ---
@@ -263,6 +263,50 @@ export default function EpiDataLaboral() {
     setStep('dashboard');
   };
 
+  // ── Descargar informe en Excel ─────────────────────────────────────────────
+  const downloadReport = () => {
+    const wb = XLSX.utils.book_new();
+
+    // Módulo 1
+    const m1 = processedData.mod1;
+    const ws1 = XLSX.utils.aoa_to_sheet([
+      ['M', 'F', 'TOTAL', 'APTO', 'APTO CON RESTR.', 'NO APTO', 'TOTAL APTITUD', 'INGRESO', 'PERIÓDICO', 'RETIRO', 'TOTAL TIPO'],
+      [
+        m1.m, m1.f, m1.total,
+        m1.apto.total, m1.apto_restr.total, m1.no_apto.total,
+        m1.apto.total + m1.apto_restr.total + m1.no_apto.total,
+        m1.ingreso.total, m1.periodico.total, m1.retiro.total,
+        m1.ingreso.total + m1.periodico.total + m1.retiro.total,
+      ],
+    ]);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Módulo 1');
+
+    // Módulos 2 y 3 (misma estructura)
+    const modHeader = ['N°', 'ENFERMEDAD', '14-17 M', '14-17 F', '18-29 M', '18-29 F', '30-59 M', '30-59 F', '60+ M', '60+ F', 'TOTAL M', 'TOTAL F'];
+    const toRows = (list) => list.map((item, i) => [
+      i + 1, item.name,
+      item.stats['14-17'].m, item.stats['14-17'].f,
+      item.stats['18-29'].m, item.stats['18-29'].f,
+      item.stats['30-59'].m, item.stats['30-59'].f,
+      item.stats['60+'].m,   item.stats['60+'].f,
+      item.stats.total.m,    item.stats.total.f,
+    ]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([modHeader, ...toRows(processedData.mod2)]), 'Módulo 2');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([modHeader, ...toRows(processedData.mod3)]), 'Módulo 3');
+
+    // Módulo 4
+    const ws4 = XLSX.utils.aoa_to_sheet([
+      ['CONCLUSIONES'],
+      ...processedData.mod4.conclusiones.map((c, i) => [`${i + 1}. ${c}`]),
+      [],
+      ['RECOMENDACIONES'],
+      ...processedData.mod4.recomendaciones.map((r, i) => [`${i + 1}. ${r}`]),
+    ]);
+    XLSX.utils.book_append_sheet(wb, ws4, 'Módulo 4');
+
+    XLSX.writeFile(wb, 'Informe_DIGESA.xlsx');
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-800">
@@ -401,8 +445,15 @@ export default function EpiDataLaboral() {
               </div>
 
               <button
+                onClick={downloadReport}
+                className="mt-4 w-full px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-sm"
+              >
+                <Download size={16} /> Descargar Excel
+              </button>
+
+              <button
                 onClick={() => { setStep('upload'); setProcessedData(null); setFileData(null); }}
-                className="mt-4 w-full text-center px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm"
+                className="mt-2 w-full text-center px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm"
               >
                 Cargar nueva sábana
               </button>
